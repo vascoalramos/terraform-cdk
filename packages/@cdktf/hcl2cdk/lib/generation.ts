@@ -6,7 +6,12 @@ import * as t from "@babel/types";
 import { DirectedGraph } from "graphology";
 import prettier from "prettier";
 
-import { TerraformResourceBlock, ProgramScope, ResourceScope } from "./types";
+import {
+  TerraformResourceBlock,
+  ProgramScope,
+  ResourceScope,
+  TypeDeclaration,
+} from "./types";
 import { camelCase, logger, pascalCase, uniqueId } from "./utils";
 import {
   Resource,
@@ -39,6 +44,7 @@ import {
   referenceToVariableName,
   variableName,
 } from "./variables";
+import { fillWithConfigAccessors } from "./partialCode";
 
 function getReference(graph: DirectedGraph, id: string) {
   logger.debug(`Finding reference for ${id}`);
@@ -246,6 +252,7 @@ export async function backendToExpression(
                     Object.entries(config).map(async ([property, value]) =>
                       t.objectProperty(
                         t.identifier(camelCase(property)),
+                        // TODO: Possibly add missing config function here as well
                         await valueToTs(
                           scope,
                           value,
@@ -485,6 +492,7 @@ export async function resource(
         t.identifier("dynamic")
       ),
       [
+        // TODO: Possibly add missing config function here as well
         await valueToTs(
           {
             ...scope,
@@ -530,6 +538,7 @@ export async function resource(
     mappedConfig.provisioners = await Promise.all(
       Object.entries(provisioner).flatMap(([type, p]: [string, any]) =>
         p.map((pp: Record<string, any>) =>
+          // TODO: Possibly add missing config function here as well
           valueToTs(
             scope,
             { type, ...pp },
@@ -608,15 +617,18 @@ async function asExpression(
   const constructId = uniqueId(scope.constructs, name);
   const overrideId = !isProvider && constructId !== name;
 
+  const completeObject = fillWithConfigAccessors(scope, otherOptions, type);
+
   const expression = t.newExpression(
     constructAst(scope, type, isModuleImport),
     [
       t.thisExpression(),
       t.stringLiteral(constructId),
+      // TODO: Possibly add missing config function here as well
       await valueToTs(
         scope,
         {
-          ...otherOptions,
+          ...completeObject,
           providers:
             providers && Object.keys(providers).length
               ? Object.entries(providers).map(([key, value]) => ({
@@ -871,7 +883,8 @@ export async function gen(statements: t.Statement[]) {
 export function wrapCodeInConstructor(
   codeContainer: string,
   code: t.Statement[],
-  className = "MyConvertedCode"
+  className: string,
+  configTypeName?: string
 ) {
   let baseContainerClass: t.MemberExpression;
   switch (codeContainer) {
@@ -891,7 +904,23 @@ export function wrapCodeInConstructor(
     default:
       throw Errors.Internal("Unsupported code container: " + codeContainer);
   }
-
+  if (configTypeName) {
+    return template.statement(
+      `
+  class %%className%% extends %%base%% {
+    constructor(scope: constructs.Construct, name: string, config: ${configTypeName}) {
+      super(scope, name);
+      %%code%%
+    }
+  }
+`,
+      { syntacticPlaceholders: true, plugins: ["typescript"] }
+    )({
+      code,
+      base: baseContainerClass,
+      className: t.identifier(className),
+    });
+  }
   return template.statement(
     `
   class %%className%% extends %%base%% {
@@ -903,4 +932,23 @@ export function wrapCodeInConstructor(
 `,
     { syntacticPlaceholders: true, plugins: ["typescript"] }
   )({ code, base: baseContainerClass, className: t.identifier(className) });
+}
+
+export function generateConfigType(
+  name: string,
+  config: Record<string, TypeDeclaration>
+): t.Statement {
+  return t.tsInterfaceDeclaration(
+    t.identifier(name),
+    undefined,
+    undefined,
+    t.tsInterfaceBody(
+      Object.entries(config).map(([key, _value]) =>
+        t.tsPropertySignature(
+          t.identifier(key),
+          t.tSTypeAnnotation(t.tsAnyKeyword()) // TODO: Try to make this better than any
+        )
+      )
+    )
+  );
 }

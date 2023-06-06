@@ -247,6 +247,7 @@ function getScope({
     forEachIteratorName,
     withinOverrideExpression,
     nodeIds: [],
+    topLevelConfig: {},
   };
 
   return scope;

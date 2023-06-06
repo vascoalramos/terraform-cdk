@@ -6,6 +6,7 @@ import {
 } from "@cdktf/provider-generator";
 
 export type TerraformResourceBlock = unknown;
+export type TypeDeclaration = unknown;
 export type ProgramScope = {
   providerSchema: ProviderSchema;
   providerGenerator: Record<string, TerraformProviderGenerator>;
@@ -20,6 +21,7 @@ export type ProgramScope = {
   // Temporary flag to indicate if we need to import the cdktf library to access the token class
   hasTokenBasedTypeCoercion: boolean;
   nodeIds: string[]; // temporarily added until replaced
+  topLevelConfig: Record<string, TypeDeclaration>;
 };
 
 export type ResourceScope = ProgramScope & {

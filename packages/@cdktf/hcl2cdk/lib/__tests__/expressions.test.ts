@@ -449,6 +449,7 @@ describe("expressions", () => {
         variables: {},
         hasTokenBasedTypeCoercion: false,
         nodeIds: [],
+        topLevelConfig: {},
       };
       expect(
         generate(
