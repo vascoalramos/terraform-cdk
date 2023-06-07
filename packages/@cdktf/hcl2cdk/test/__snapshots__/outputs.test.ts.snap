@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`outputs multiple outputs typescript snapshot 1`] = `
+exports[`outputs multiple outputs snapshot typescript 1`] = `
 "import * as constructs from "constructs";
 import * as cdktf from "cdktf";
 class MyConvertedCode extends cdktf.TerraformStack {
@@ -17,7 +17,7 @@ class MyConvertedCode extends cdktf.TerraformStack {
 "
 `;
 
-exports[`outputs number output typescript snapshot 1`] = `
+exports[`outputs number output snapshot typescript 1`] = `
 "import * as constructs from "constructs";
 import * as cdktf from "cdktf";
 class MyConvertedCode extends cdktf.TerraformStack {
@@ -31,7 +31,7 @@ class MyConvertedCode extends cdktf.TerraformStack {
 "
 `;
 
-exports[`outputs output typescript snapshot 1`] = `
+exports[`outputs output snapshot typescript 1`] = `
 "import * as constructs from "constructs";
 import * as cdktf from "cdktf";
 class MyConvertedCode extends cdktf.TerraformStack {
@@ -45,7 +45,7 @@ class MyConvertedCode extends cdktf.TerraformStack {
 "
 `;
 
-exports[`outputs output withdescription typescript snapshot 1`] = `
+exports[`outputs output withdescription snapshot typescript 1`] = `
 "import * as constructs from "constructs";
 import * as cdktf from "cdktf";
 class MyConvertedCode extends cdktf.TerraformStack {
@@ -61,7 +61,7 @@ class MyConvertedCode extends cdktf.TerraformStack {
 "
 `;
 
-exports[`outputs sensitive output typescript snapshot 1`] = `
+exports[`outputs sensitive output snapshot typescript 1`] = `
 "import * as constructs from "constructs";
 import * as cdktf from "cdktf";
 class MyConvertedCode extends cdktf.TerraformStack {
