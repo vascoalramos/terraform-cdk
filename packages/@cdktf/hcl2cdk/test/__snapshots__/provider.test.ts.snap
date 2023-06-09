@@ -38,11 +38,8 @@ import * as cdktf from "cdktf";
 See https://cdk.tf/provider-generation for more details.*/
 import * as aws from "./.gen/providers/aws";
 import * as Vpc from "./.gen/modules/terraform-aws-modules/aws/vpc";
-interface MyConfig {
-  timeouts: any;
-}
 class MyConvertedCode extends cdktf.TerraformStack {
-  constructor(scope: constructs.Construct, name: string, config: MyConfig) {
+  constructor(scope: constructs.Construct, name: string) {
     super(scope, name);
     new aws.provider.AwsProvider(this, "aws", {
       region: "us-east-1",
@@ -62,7 +59,6 @@ class MyConvertedCode extends cdktf.TerraformStack {
     new aws.instance.Instance(this, "foo", {
       foo: "bar",
       provider: awsWest,
-      timeouts: config.timeouts,
     });
   }
 }
