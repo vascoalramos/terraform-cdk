@@ -398,6 +398,7 @@ For a more precise conversion please use the --provider flag in convert.`
 
   // We split up the generated code so that users can have more control over what to insert where
   return {
+    // TODO: Remove imports and code because rosetta won't be able to translate them
     all: await gen([
       constructsImport,
       ...cdktfImports,
@@ -427,9 +428,59 @@ For a more precise conversion please use the --provider flag in convert.`
 }
 
 type File = { contents: string; fileName: string };
+const translators = {
+  python: {
+    visitor: new rosetta.PythonVisitor(),
+    postTranslationMutation: (code: string) => {
+      return code
+        .split("\n")
+        .map((line) => {
+          // We replace from-import lines
+          if (line.startsWith("from ...gen.providers.")) {
+            return line.replace("from ...gen.providers.", "from imports.");
+          }
+          // We replace import lines
+          if (line.startsWith("import ...gen.providers.")) {
+            return line.replace("import ...gen.providers.", "import imports.");
+          }
+          return line;
+        })
+        .join("\n");
+    },
+  },
+  java: {
+    visitor: new rosetta.JavaVisitor(),
+    postTranslationMutation: (code: string) => code,
+  },
+  csharp: {
+    visitor: new rosetta.CSharpVisitor(),
+    postTranslationMutation: (code: string) => {
+      return code
+        .split("\n")
+        .map((line) => {
+          // We replace using lines
+          if (line.startsWith("using Gen.Providers.")) {
+            const importLine = line.replace("using Gen.Providers.", "");
 
-function translatorForVisitor(visitor: any) {
+            return `using ${importLine
+              .substring(0, 1)
+              .toLocaleLowerCase()}${importLine.substring(1)}`;
+          }
+
+          return line;
+        })
+        .join("\n");
+    },
+  },
+  go: {
+    visitor: new rosetta.GoVisitor(),
+    postTranslationMutation: (code: string) => code,
+  },
+};
+
+function translatorForLanguage(language: keyof typeof translators) {
   return (file: File, throwOnTranslationError: boolean) => {
+    const { visitor, postTranslationMutation } = translators[language];
     const { translation, diagnostics } = rosetta.translateTypeScript(
       file,
       visitor,
@@ -440,33 +491,23 @@ function translatorForVisitor(visitor: any) {
       throwOnTranslationError &&
       diagnostics.filter((diag) => diag.isError).length > 0
     ) {
-      logger.debug(
-        `Could not translate TS to ${visitor.language}:\n${file.contents}`
-      );
+      logger.debug(`Could not translate TS to ${language}:\n${file.contents}`);
       throw new Error(
-        `Could not translate TS to ${visitor.language}: ${diagnostics
+        `Could not translate TS to ${language}: ${diagnostics
           .map((diag) => diag.formattedMessage)
           .join("\n")}`
       );
     }
 
-    return translation;
+    return postTranslationMutation(translation);
   };
 }
-
-const translations = {
-  typescript: (file: File, _throwOnTranslationError: boolean) => file.contents,
-  python: translatorForVisitor(new rosetta.PythonVisitor()),
-  java: translatorForVisitor(new rosetta.JavaVisitor()),
-  csharp: translatorForVisitor(new rosetta.CSharpVisitor()),
-  go: translatorForVisitor(new rosetta.GoVisitor()),
-};
 
 type ConvertOptions = {
   /**
    * The language to convert to
    */
-  language: keyof typeof translations;
+  language: keyof typeof translators | "typescript";
   /**
    * The provider schema to use for conversion
    */
@@ -492,7 +533,10 @@ export async function convert(
   }: ConvertOptions
 ) {
   const fileName = "terraform.tf";
-  const translater = translations[language];
+  const translater =
+    language === "typescript"
+      ? (file: File, _throwOnTranslationError: boolean) => file.contents
+      : translatorForLanguage(language);
 
   if (!translater) {
     throw new Error("Unsupported language used: " + language);
